@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>My Kanban Board</title>
+<!--STYLES-->
+</head>
+<body>
+<header>
+  <h1>My Kanban Board</h1>
+  <div class="header-right">
+    <div class="filters" role="group" aria-label="Filter by tag">
+      <button data-filter="all" class="active">All</button>
+      <button data-filter="work">Work</button>
+      <button data-filter="personal">Personal</button>
+    </div>
+    <span id="user-email" title="Signed in">__USER_EMAIL__</span>
+    <button id="add-card" class="primary">+ Add card</button>
+    <a href="/api/logout" class="signout">Sign out</a>
+  </div>
+</header>
+<main id="board">
+  <section class="lane" data-lane="now">
+    <h2>Now</h2>
+    <div class="cards"></div>
+  </section>
+  <section class="lane" data-lane="next">
+    <h2>Next</h2>
+    <div class="cards"></div>
+  </section>
+  <section class="lane" data-lane="waiting">
+    <h2>Waiting on others</h2>
+    <div class="cards"></div>
+  </section>
+  <section class="lane" data-lane="done">
+    <h2>Done</h2>
+    <div class="cards"></div>
+  </section>
+</main>
+
+<div id="modal-backdrop" class="hidden">
+  <form id="card-form" class="modal">
+    <h3 id="modal-title">Add card</h3>
+    <label>Title
+      <input id="f-title" required maxlength="160" placeholder="Card title">
+    </label>
+    <label>Details
+      <textarea id="f-details" rows="4" maxlength="2000" placeholder="Notes, context, next step"></textarea>
+    </label>
+    <div class="row">
+      <label>Tag
+        <select id="f-tag">
+          <option value="work">Work</option>
+          <option value="personal">Personal</option>
+        </select>
+      </label>
+      <label>Size
+        <select id="f-priority">
+          <option value="high">Big rock</option>
+          <option value="normal" selected>Medium</option>
+          <option value="low">Small</option>
+        </select>
+      </label>
+    </div>
+    <div class="row">
+      <label>Lane
+        <select id="f-lane">
+          <option value="now">Now</option>
+          <option value="next">Next</option>
+          <option value="waiting">Waiting on others</option>
+          <option value="done">Done</option>
+        </select>
+      </label>
+      <label>Due date
+        <input id="f-due" type="date">
+      </label>
+    </div>
+    <label>Owner <span class="hint">(optional)</span>
+      <input id="f-owner" maxlength="120" placeholder="Who owns it">
+    </label>
+    <div class="modal-actions">
+      <button type="button" id="modal-cancel">Cancel</button>
+      <button type="submit" class="primary">Save</button>
+    </div>
+  </form>
+</div>
+
+<!--APP-->
+</body>
+</html>

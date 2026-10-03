@@ -1,0 +1,179 @@
+/* My Kanban Board — client logic. Cards persist in localStorage, seeded below. */
+'use strict';
+
+const SEED = [
+  // ---- Work ----
+  { id: 1, title: 'AE season 2027', tag: 'work', priority: 'high', lane: 'now', due_date: '2026-11-28', owner: null, details: 'Performance, SLAs and capacity through November 28.\n- track hits per second\n- no batch runs during the day\n- weekly database vacuum\n- daily app health\n- ongoing database CPU upgrade discussion' },
+  { id: 2, title: 'ASB namespace rollout', tag: 'work', priority: 'high', lane: 'now', due_date: null, owner: null, details: 'Six partitioned Azure Service Bus namespaces: Inbound, Outbounds, Actions, Utility, Migration, Benefits Builder.\nMigration team\u2019s common-library change is the key dependency.\nPOCs: Arun M (Inbound, Actions), Sandeep (Outbounds), Sowjanya (Migration), Prasoon (Benefits Builder), Harrison (Utility).\nWeekly cadence to drive it through.\nOct 2: MSFT memory-leak hotfix installed Sep 30 \u2014 verify post-hotfix memory behavior, don\u2019t assume resolved.' },
+  { id: 3, title: 'Liquibase execution', tag: 'work', priority: 'high', lane: 'now', due_date: null, owner: 'Jeremy', details: 'Jeremy is planning the execution path across about 60 repos. Start with a small set of low-risk repos before going wide.\nDecision: brand-new repo with fresh Liquibase tracking for all new changes; leave the old repo and old checksums untouched.' },
+  { id: 4, title: 'TPS / performance-suite ownership', tag: 'work', priority: 'high', lane: 'waiting', due_date: null, owner: 'Kumar (contact)', details: 'Kumar Palaniandy is the TPS contact. Day-to-day ownership is still open \u2014 route to Sandeep S / Arun M.' },
+  { id: 5, title: 'Knowledge extraction pipeline (Forge-OS)', tag: 'work', priority: 'high', lane: 'now', due_date: null, owner: null, details: 'Business-logic knowledge pipeline for Forge-OS.\nJoern spike done Oct 1 on invented Java app (javasrc frontend, ~18s).\nNext: extractor bake-off (Joern vs scip-java vs tree-sitter-java).\nSources: application code, database, Benefits Builder, Oscar (TBD).\nBuild plan v1 done. Staffing open: internal engineer via Sandeep S/Arun M vs contractor.\nFidelity security review + OSS approval required before any real repo.' },
+  { id: 6, title: 'IRIS migration (Informatica replacement)', tag: 'work', priority: 'high', lane: 'now', due_date: null, owner: null, details: 'Informatica license expires end of 2029; all pipelines out by Sep 2029. Hobs has ~1000 pipelines.\nIRIS is internal, build-not-buy, currently handles only a small subset of Informatica capabilities (~10 complex flows).\nSequence: Hobs first (a few pipelines, then a bunch in prod), then FHB POC in IRIS, then parallel migration.\nGating item: IRIS architecture and capacity \u2014 ask the IRIS team (reminder Oct 17).' },
+  { id: 7, title: 'Postgres final-COMMIT regression (SEV A)', tag: 'work', priority: 'high', lane: 'now', due_date: null, owner: null, details: 'Azure Database for PostgreSQL Flexible Server slowed in the final COMMIT phase after scaling 64 to 96 CPUs.\nProduction install gated on clean performance runs. Microsoft ticket upgraded to SEV A (Oct 2).\nStill needed: diagnostic checklist for Microsoft covering WAL/fsync, storage latency/throughput, checkpoints, commit timing, config changes paired with CPU scaling.' },
+  { id: 8, title: 'SnapLogic to enterprise framework (60 pipelines)', tag: 'work', priority: 'high', lane: 'next', due_date: '2027-01-01', owner: null, details: 'Enterprise is deprecating SnapLogic and building a new pipeline framework.\nOpen decision with Arun M on moving all 60 pipelines into it; dependency on outside teams is the key concern.\nArun M and Sandeep to account for the migration work starting Jan 1.' },
+  { id: 9, title: 'Conversational agent POC', tag: 'work', priority: 'normal', lane: 'now', due_date: null, owner: null, details: 'Curated-workflows path:\n1) intent detection + one-shot APIs\n2) multi-step clarification / session state\n3) agent-planned execution\nVisual editor for the conversational agent has a lot to fix (Oct 2). POC reliability still unproven.\nPII/PHI stays in-network.' },
+  { id: 10, title: 'Jean C presentation', tag: 'work', priority: 'normal', lane: 'now', due_date: '2026-10-09', owner: null, details: 'Skip-level presentation to Jean C. Moved from Oct 2 to Friday Oct 9.\nUse the strongest shipped result as the centerpiece.\nDaily 9 AM prep reminders run through Oct 9.' },
+  { id: 11, title: 'Endpoint crawler', tag: 'work', priority: 'normal', lane: 'next', due_date: null, owner: null, details: 'Make sure we have perf tests for all API endpoints. Capture the next concrete milestone and owner.' },
+  { id: 12, title: "Ken's list", tag: 'work', priority: 'normal', lane: 'next', due_date: null, owner: null, details: 'Ongoing performance offender list \u2014 keep it updated with the latest offender queries and items.' },
+  { id: 13, title: 'Tracer tool - coordinate remaining work', tag: 'work', priority: 'normal', lane: 'now', due_date: null, owner: null, details: 'Coordinate the remaining tracer work and decide next steps.' },
+  { id: 14, title: 'TLM final report (plan year end)', tag: 'work', priority: 'normal', lane: 'now', due_date: '2026-10-06', owner: null, details: 'Tracks obsolete tech (Spring Boot, Java) across 100+ apps; hygiene report goes to senior management.\nPlan year ended Sep 30. Final report expected Oct 5 or 6 \u2014 keep checks running through Oct 6 until confirmed clean.' },
+  { id: 15, title: 'Annual enrollment sentiment analysis', tag: 'work', priority: 'normal', lane: 'next', due_date: null, owner: null, details: 'What employees at 50+ health-benefits clients are saying about the annual enrollment experience: raw data file + executive deck, then the same exercise for each competitor.\nGaps to fill: bswift/Benefitfocus/PlanSource missing, raw data as spreadsheet not Markdown, check email first.' },
+  { id: 16, title: 'wscomm PIM mapping + comms testing', tag: 'work', priority: 'normal', lane: 'next', due_date: '2026-11-06', owner: null, details: 'wscomm to complete PIM mapping equivalent implementation by the first week of November \u2014 check progress with Shankar B (communications engineering lead).\nPost-FDC-migration comms testing set for Jan 31, 2027.\nShankar proposed a self-serve content tool so BAs/client teams do content edits instead of engineers \u2014 asked him for savings and speed-to-market numbers.' },
+  { id: 17, title: 'Arun H weekly one-pager', tag: 'work', priority: 'low', lane: 'next', due_date: '2026-10-09', owner: null, details: 'Every Friday 12:00 PM ET. Cover big-ticket, long-term vision, big impact, platform stability, watch, small items.\nProfessional and concise tone. Standing rule: no client counts \u2014 he already knows them.' },
+  // ---- Personal ----
+  { id: 18, title: 'Car search (CR-V under $25k)', tag: 'personal', priority: 'normal', lane: 'now', due_date: null, owner: null, details: 'Sub-$25k SUV, keeps the most value if sold in 15 months, must take an interlock install.\nArjun Hoysala\u2019s 2020 CR-V EX AWD (~54k mi, his $23,500 counteroffer): detailing done, re-viewing Oct 3 AM; VIN checks clear.\nStill open: accident/odometer/service history, PPI, interlock-provider approval, title verification, written final price.\nStanding pick: EchoPark 2023 CR-V Sport Hybrid, Cary.\nNever purchase or commit without explicit approval of the specific vehicle and final price.' },
+  { id: 19, title: 'Irwin NCSSM + college readiness', tag: 'personal', priority: 'normal', lane: 'next', due_date: null, owner: null, details: 'NCSSM Class of 2030 application (10th grade = 2027\u201328, apply fall of 10th grade): milestone reminders Dec 2026\u2013Feb 2028.\nStrengthen profile with STEM clubs/competitions, research, leadership, summer programs.\nSummer 2027 top picks: PROMYS (apply by end of Feb 2027), Canada/USA Mathcamp, HCSSiM.\nTrack term grades, MAP, PSAT 8/9, AMC 10, EOC.' },
+  { id: 20, title: 'Eben Old Salem consent form', tag: 'personal', priority: 'low', lane: 'now', due_date: '2026-10-07', owner: null, details: 'Eben\u2019s Old Salem field trip is Thu Oct 8 ($50 paid Sep 29). Parental consent + emergency form still outstanding \u2014 must go back with Eben.' },
+  { id: 21, title: 'Science Olympiad decision ($70)', tag: 'personal', priority: 'low', lane: 'now', due_date: '2026-10-03', owner: null, details: '$70 Science Olympiad Club HS dues \u2014 still my call whether Irwin joins.' },
+  { id: 22, title: 'Zebra cancellation form', tag: 'personal', priority: 'low', lane: 'now', due_date: '2026-10-07', owner: null, details: 'Zebra Robotics cancelled Sep 30, no October billing. The online Pause/Cancellation form is mine to fill \u2014 still pending: https://forms.gle/dHDrz6YGM2ngT4hK9\nEben\u2019s final class is Oct 8.' },
+  { id: 23, title: 'Synergy liability form signature', tag: 'personal', priority: 'low', lane: 'now', due_date: null, owner: null, details: 'Irwin\u2019s badminton at Synergy Academy. Parent signature on the liability form is still pending (under-18 requires a parent\u2019s signature, not Irwin\u2019s).\nHave the front desk confirm the signature on file.' },
+  { id: 24, title: 'FLL $250 check to TMSA Apex', tag: 'personal', priority: 'low', lane: 'now', due_date: '2026-10-04', owner: null, details: '$250 FLL club fee, check made payable to TMSA Apex (Ms. Selcuk\u2019s team, started Oct 1).' },
+  { id: 25, title: 'Eben excused absence (Sep 28)', tag: 'personal', priority: 'low', lane: 'now', due_date: '2026-10-03', owner: null, details: 'Eben was absent Mon Sep 28 for health reasons. Excused absence request still needs to be submitted to TMSA Apex.' },
+  { id: 26, title: 'Pay AT&T U-verse bill (September)', tag: 'personal', priority: 'low', lane: 'now', due_date: null, owner: null, details: 'September 2026 AT&T U-verse bill is ready to view; payment pending. The notice email has no amount or due date \u2014 check the bill on AT&T\u2019s site.' },
+  { id: 27, title: 'MCF AI Bootcamp confirm (Irwin)', tag: 'personal', priority: 'low', lane: 'now', due_date: '2026-10-07', owner: null, details: 'Mark Cuban Foundation Fall 2026 AI Bootcamp \u2014 admission decision is live. Confirm by Wed Oct 7 or the spot goes to the waitlist.\nThree Saturdays: Oct 31, Nov 7, Nov 14, 11 AM\u20134 PM.' },
+  { id: 28, title: 'Eben basketball form', tag: 'personal', priority: 'low', lane: 'now', due_date: '2026-10-09', owner: null, details: 'Eben\u2019s basketball form is due Oct 9.' },
+  { id: 29, title: 'Town of Apex utility bill ($622.16)', tag: 'personal', priority: 'low', lane: 'now', due_date: '2026-10-03', owner: null, details: '$622.16 on account 32638001, was due Sep 13 \u2014 19 days past due. Town bills go to Santhi\u2019s email. Pay now in case late fees are stacking up.' },
+  { id: 30, title: 'Spectrum $180 credit verification', tag: 'personal', priority: 'low', lane: 'waiting', due_date: null, owner: null, details: 'Spectrum issued a $180 credit on the disputed $10/month mobile line. Confirm it covers the full ~$210 disputed total.' },
+  { id: 31, title: 'Kochi trip \u2014 Qatar balance (~$1,000)', tag: 'personal', priority: 'low', lane: 'next', due_date: null, owner: null, details: 'RDU to Kochi one-way, Fri Nov 20 (AA 5116/8310 + QR 516, seats 22C/22A, Gracy Jacob + Winny). Roughly $1,000 more still owed to Qatar \u2014 settle it before departure.' },
+];
+
+const LANES = ['now', 'next', 'waiting', 'done'];
+const LANE_LABELS = { now: 'Now', next: 'Next', waiting: 'Waiting on others', done: 'Done' };
+const SIZE_LABELS = { high: 'Big rock', normal: 'Medium', low: 'Small' };
+const STORE_KEY = 'my-kanban-board-v1';
+
+let cards = load();
+let filter = 'all';
+let editingId = null;
+
+function load() {
+  try {
+    const raw = localStorage.getItem(STORE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed;
+    }
+  } catch (e) { /* fall through to seed */ }
+  return SEED.map((c) => ({ ...c }));
+}
+
+function save() {
+  localStorage.setItem(STORE_KEY, JSON.stringify(cards));
+}
+
+function escHtml(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function isOverdue(c) {
+  if (!c.due_date || c.lane === 'done') return false;
+  const today = new Date().toISOString().slice(0, 10);
+  return c.due_date < today;
+}
+
+function render() {
+  document.querySelectorAll('.lane').forEach((laneEl) => {
+    const lane = laneEl.dataset.lane;
+    const box = laneEl.querySelector('.cards');
+    const list = cards.filter((c) => c.lane === lane && (filter === 'all' || c.tag === filter));
+    laneEl.querySelector('h2').innerHTML =
+      escHtml(LANE_LABELS[lane]) + ' <span class="count">(' + list.length + ')</span>';
+    box.innerHTML = '';
+    list.forEach((c) => box.appendChild(cardEl(c)));
+  });
+  document.querySelectorAll('.filters button').forEach((b) =>
+    b.classList.toggle('active', b.dataset.filter === filter));
+}
+
+function cardEl(c) {
+  const el = document.createElement('div');
+  el.className = `card tag-${c.tag} size-${c.priority}`;
+  const idx = LANES.indexOf(c.lane);
+  const leftBtn = idx > 0 ? `<button data-act="left" title="Move to ${escHtml(LANE_LABELS[LANES[idx - 1]])}">\u2190</button>` : '';
+  const rightBtn = idx < LANES.length - 1 ? `<button data-act="right" title="Move to ${escHtml(LANE_LABELS[LANES[idx + 1]])}">\u2192</button>` : '';
+  const due = c.due_date
+    ? `<div class="meta">${isOverdue(c) ? '<span class="overdue">Overdue: ' : 'Due: '}${escHtml(c.due_date)}${isOverdue(c) ? '</span>' : ''}${c.owner ? ' \u00b7 ' + escHtml(c.owner) : ''}</div>`
+    : (c.owner ? `<div class="meta">${escHtml(c.owner)}</div>` : '');
+  el.innerHTML =
+    `<div class="card-top"><span class="pill tag-${c.tag}">${c.tag === 'work' ? 'Work' : 'Personal'}</span>` +
+    `<span class="pill size-${c.priority}">${escHtml(SIZE_LABELS[c.priority] || c.priority)}</span></div>` +
+    `<h3>${escHtml(c.title)}</h3>` +
+    (c.details ? `<p class="details">${escHtml(c.details)}</p>` : '') +
+    due +
+    `<div class="actions">${leftBtn}${rightBtn}<button data-act="edit">Edit</button><button data-act="del" class="danger">Delete</button></div>`;
+  el.querySelectorAll('button').forEach((b) => {
+    b.addEventListener('click', () => act(c.id, b.dataset.act));
+  });
+  return el;
+}
+
+function act(id, action) {
+  const c = cards.find((x) => x.id === id);
+  if (!c) return;
+  if (action === 'left' || action === 'right') {
+    const idx = LANES.indexOf(c.lane) + (action === 'right' ? 1 : -1);
+    if (idx >= 0 && idx < LANES.length) { c.lane = LANES[idx]; save(); render(); }
+  } else if (action === 'edit') {
+    openModal(c);
+  } else if (action === 'del') {
+    if (confirm(`Delete "${c.title}"?`)) {
+      cards = cards.filter((x) => x.id !== id);
+      save(); render();
+    }
+  }
+}
+
+function openModal(c) {
+  editingId = c ? c.id : null;
+  document.getElementById('modal-title').textContent = c ? 'Edit card' : 'Add card';
+  document.getElementById('f-title').value = c ? c.title : '';
+  document.getElementById('f-details').value = c ? (c.details || '') : '';
+  document.getElementById('f-tag').value = c ? c.tag : 'work';
+  document.getElementById('f-priority').value = c ? c.priority : 'normal';
+  document.getElementById('f-lane').value = c ? c.lane : 'now';
+  document.getElementById('f-due').value = c && c.due_date ? c.due_date : '';
+  document.getElementById('f-owner').value = c && c.owner ? c.owner : '';
+  document.getElementById('modal-backdrop').classList.remove('hidden');
+  document.getElementById('f-title').focus();
+}
+
+function closeModal() {
+  document.getElementById('modal-backdrop').classList.add('hidden');
+  editingId = null;
+}
+
+document.getElementById('add-card').addEventListener('click', () => openModal(null));
+document.getElementById('modal-cancel').addEventListener('click', closeModal);
+document.getElementById('modal-backdrop').addEventListener('click', (e) => {
+  if (e.target.id === 'modal-backdrop') closeModal();
+});
+document.getElementById('card-form').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const data = {
+    title: document.getElementById('f-title').value.trim(),
+    details: document.getElementById('f-details').value.trim(),
+    tag: document.getElementById('f-tag').value,
+    priority: document.getElementById('f-priority').value,
+    lane: document.getElementById('f-lane').value,
+    due_date: document.getElementById('f-due').value || null,
+    owner: document.getElementById('f-owner').value.trim() || null,
+  };
+  if (!data.title) return;
+  if (editingId != null) {
+    const c = cards.find((x) => x.id === editingId);
+    if (c) Object.assign(c, data);
+  } else {
+    const nextId = cards.reduce((m, x) => Math.max(m, x.id), 0) + 1;
+    cards.push({ id: nextId, ...data });
+  }
+  save(); render(); closeModal();
+});
+document.querySelectorAll('.filters button').forEach((b) =>
+  b.addEventListener('click', () => { filter = b.dataset.filter; render(); }));
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeModal();
+});
+
+render();
